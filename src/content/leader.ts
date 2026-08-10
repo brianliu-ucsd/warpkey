@@ -39,7 +39,6 @@ function liveLabel(binding: Binding): string {
 /** Attaches the leader-key chord listener to the page. */
 export function attachLeaderController(options: LeaderControllerOptions): LeaderController {
   let leaderKey = options.initialLeaderKey || DEFAULT_LEADER_KEY;
-  console.info(`Warpkey: leader key loaded as ${JSON.stringify(leaderKey)}`);
   let armed = false;
   let timeoutId: number | undefined;
 
@@ -93,9 +92,6 @@ export function attachLeaderController(options: LeaderControllerOptions): Leader
   return {
     setLeaderKey: (key: string) => {
       leaderKey = key;
-      // Visible in this page's devtools console so a leader-key change that
-      // doesn't seem to take effect can be told apart from one that never arrived.
-      console.info(`Warpkey: leader key set to ${JSON.stringify(key)}`);
     },
     detach: () => window.removeEventListener("keydown", handleKeydown, { capture: true }),
   };
