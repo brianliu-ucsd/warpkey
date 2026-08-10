@@ -8,8 +8,7 @@ import {
   setLeaderKey,
   onLeaderKeyChanged,
 } from "../storage/store";
-import { ARM_RECORD_MESSAGE } from "../content/messages";
-import { normalizeVolatileText } from "../shared/text";
+import { ARM_RECORD_MESSAGE, RESOLVE_LABELS_MESSAGE } from "../content/messages";
 
 const hostEl = document.querySelector<HTMLParagraphElement>("#host")!;
 const listEl = document.querySelector<HTMLUListElement>("#bindings")!;
@@ -17,9 +16,22 @@ const recordBtn = document.querySelector<HTMLButtonElement>("#record")!;
 const leaderKeyEl = document.querySelector<HTMLElement>("#leader-key")!;
 const leaderHintEl = document.querySelector<HTMLElement>("#leader-hint")!;
 
+/** Current on-page text per binding id, fetched from the content script. Empty until a matching tab responds. */
+let liveLabels: Record<string, string> = {};
+
 async function getActiveTab(): Promise<chrome.tabs.Tab | undefined> {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   return tab;
+}
+
+async function fetchLiveLabels(tabId: number): Promise<Record<string, string>> {
+  try {
+    const response = await chrome.tabs.sendMessage(tabId, { type: RESOLVE_LABELS_MESSAGE });
+    return (response as Record<string, string> | undefined) ?? {};
+  } catch {
+    // No content script on this tab (e.g. a chrome:// page) or it hasn't finished loading yet.
+    return {};
+  }
 }
 
 function renderLeaderKey(key: string): void {
@@ -111,7 +123,7 @@ function renderBindings(hostname: string, bindings: Binding[]): void {
     mainRow.className = "main-row";
     const label = document.createElement("span");
     label.className = "label";
-    label.textContent = binding.fingerprint ? normalizeVolatileText(binding.fingerprint) : binding.action;
+    label.textContent = liveLabels[binding.id] ?? binding.fingerprint ?? binding.action;
     const kbd = document.createElement("kbd");
     kbd.textContent = binding.key;
     const remove = document.createElement("button");
@@ -141,6 +153,7 @@ async function init(): Promise<void> {
   }
   hostEl.textContent = hostname;
   const config = await getHostConfig(hostname);
+  if (tab?.id) liveLabels = await fetchLiveLabels(tab.id);
   renderBindings(hostname, config.bindings);
 
   onStoreChanged((store) => {

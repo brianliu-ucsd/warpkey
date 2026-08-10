@@ -2,12 +2,27 @@ import type { Binding } from "../types/binding";
 import { getHostConfig, onStoreChanged, getLeaderKey, onLeaderKeyChanged } from "../storage/store";
 import { attachLeaderController } from "./leader";
 import { attachRecorder } from "./recorder";
-import { resolveSelector, performAction } from "./selector";
+import { resolveSelector, performAction, captureFingerprint } from "./selector";
 import { showMessage, hide } from "./overlay";
+import { RESOLVE_LABELS_MESSAGE } from "./messages";
 
 const FEEDBACK_DISPLAY_MS = 1500;
 
 let bindings: Binding[] = [];
+
+/** Lets the popup show each binding's current on-page text instead of a frozen record-time snapshot. */
+chrome.runtime.onMessage.addListener((message: { type?: string }, _sender, sendResponse) => {
+  if (message?.type !== RESOLVE_LABELS_MESSAGE) return;
+  const labels: Record<string, string> = {};
+  for (const binding of bindings) {
+    const { element } = resolveSelector(binding.selector, binding.fingerprint);
+    if (element) {
+      const text = captureFingerprint(element);
+      if (text) labels[binding.id] = text;
+    }
+  }
+  sendResponse(labels);
+});
 
 function fireBinding(binding: Binding): void {
   const { element, stale } = resolveSelector(binding.selector, binding.fingerprint);

@@ -1,6 +1,9 @@
-import type { Binding } from "../types/binding";
-
 const HOST_ID = "warpkey-overlay-host";
+
+export interface OverlayEntry {
+  key: string;
+  label: string;
+}
 
 function getHost(): HTMLElement {
   let host = document.getElementById(HOST_ID);
@@ -45,17 +48,17 @@ function getPanel(): HTMLElement {
   return panel;
 }
 
-export function showBindingList(bindings: Binding[]): void {
+export function showBindingList(entries: OverlayEntry[]): void {
   const panel = getPanel();
   panel.innerHTML = "";
-  for (const binding of bindings) {
+  for (const entry of entries) {
     const row = document.createElement("div");
     row.className = "row";
     const kbd = document.createElement("kbd");
-    kbd.textContent = binding.key;
+    kbd.textContent = entry.key;
     const label = document.createElement("span");
     label.className = "label";
-    label.textContent = binding.fingerprint || binding.action;
+    label.textContent = entry.label;
     row.append(kbd, label);
     panel.appendChild(row);
   }

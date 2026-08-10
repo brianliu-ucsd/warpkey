@@ -83,11 +83,24 @@ plus a separate top-level key for the global leader key setting. Gives
 cross-device sync; known quota risk for heavy users (~8KB per item, ~100KB
 total) noted in the feasibility doc.
 
-The popup also reuses the digit-normalization from the drift check (see
-above) when displaying a binding's label, so a stored fingerprint like
-`"clicks: 0"` renders as `"clicks: #"` rather than a frozen count that never
-matches what's actually on the page after the binding has fired. See
-`src/shared/text.ts`.
+## Display labels: live, not the stored fingerprint
+
+The stored `fingerprint` is a record-time snapshot used only for drift
+detection (above); showing it directly as a label would freeze at whatever
+text existed the moment the binding was recorded, which for a target like a
+click counter is stale from the very first use. Both display surfaces instead
+re-resolve the binding's selector against the live DOM and show whatever text
+is there right now, falling back to the stored fingerprint (or the action
+name) only when the element can't currently be resolved:
+
+- The on-page "which key?" overlay resolves live directly, since it already
+  runs in the same document as the target (`liveLabel` in `src/content/leader.ts`).
+- The popup can't touch the target's DOM itself (it's a separate extension
+  page), so it asks the active tab's content script to resolve each binding
+  and report back the current text (`RESOLVE_LABELS_MESSAGE` in
+  `src/content/messages.ts`, handled in `src/content/index.ts`). This only
+  works when the binding's target is actually present on the currently open
+  page; elsewhere it falls back to the stored fingerprint.
 
 ## Known v1 limitations (documented, not fixed)
 

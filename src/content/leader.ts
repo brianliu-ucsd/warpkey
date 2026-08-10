@@ -1,5 +1,6 @@
 import type { Binding } from "../types/binding";
 import { showBindingList, hide } from "./overlay";
+import { resolveSelector, captureFingerprint } from "./selector";
 import { DEFAULT_LEADER_KEY } from "../shared/constants";
 
 const CHORD_TIMEOUT_MS = 1500;
@@ -25,9 +26,20 @@ function matchesPath(binding: Binding, pathname: string): boolean {
   return !binding.pathPrefix || pathname.startsWith(binding.pathPrefix);
 }
 
+/** Reads the target's current on-page text rather than the fingerprint frozen at record time. */
+function liveLabel(binding: Binding): string {
+  const { element } = resolveSelector(binding.selector, binding.fingerprint);
+  if (element) {
+    const text = captureFingerprint(element);
+    if (text) return text;
+  }
+  return binding.fingerprint || binding.action;
+}
+
 /** Attaches the leader-key chord listener to the page. */
 export function attachLeaderController(options: LeaderControllerOptions): LeaderController {
   let leaderKey = options.initialLeaderKey || DEFAULT_LEADER_KEY;
+  console.info(`Warpkey: leader key loaded as ${JSON.stringify(leaderKey)}`);
   let armed = false;
   let timeoutId: number | undefined;
 
@@ -45,7 +57,13 @@ export function attachLeaderController(options: LeaderControllerOptions): Leader
     const bindings = scopedBindings();
     if (bindings.length === 0) return;
     armed = true;
-    showBindingList(bindings);
+    // Rendering (including live selector resolution) is best-effort: a failure here
+    // must not leave `armed` stuck true with no timeout scheduled to clear it.
+    try {
+      showBindingList(bindings.map((b) => ({ key: b.key, label: liveLabel(b) })));
+    } catch (error) {
+      console.error("Warpkey: failed to render the which-key overlay", error);
+    }
     timeoutId = window.setTimeout(disarm, CHORD_TIMEOUT_MS);
   }
 
@@ -75,6 +93,9 @@ export function attachLeaderController(options: LeaderControllerOptions): Leader
   return {
     setLeaderKey: (key: string) => {
       leaderKey = key;
+      // Visible in this page's devtools console so a leader-key change that
+      // doesn't seem to take effect can be told apart from one that never arrived.
+      console.info(`Warpkey: leader key set to ${JSON.stringify(key)}`);
     },
     detach: () => window.removeEventListener("keydown", handleKeydown, { capture: true }),
   };
