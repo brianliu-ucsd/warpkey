@@ -1,14 +1,42 @@
 import type { Binding } from "../types/binding";
-import { getHostConfig, onStoreChanged, removeBinding, updateBinding } from "../storage/store";
+import {
+  getHostConfig,
+  onStoreChanged,
+  removeBinding,
+  updateBinding,
+  getLeaderKey,
+  setLeaderKey,
+  onLeaderKeyChanged,
+} from "../storage/store";
 import { ARM_RECORD_MESSAGE } from "../content/messages";
+import { normalizeVolatileText } from "../shared/text";
 
 const hostEl = document.querySelector<HTMLParagraphElement>("#host")!;
 const listEl = document.querySelector<HTMLUListElement>("#bindings")!;
 const recordBtn = document.querySelector<HTMLButtonElement>("#record")!;
+const leaderKeyEl = document.querySelector<HTMLElement>("#leader-key")!;
+const leaderHintEl = document.querySelector<HTMLElement>("#leader-hint")!;
 
 async function getActiveTab(): Promise<chrome.tabs.Tab | undefined> {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   return tab;
+}
+
+function renderLeaderKey(key: string): void {
+  leaderKeyEl.textContent = key;
+}
+
+function startLeaderKeyCapture(): void {
+  leaderHintEl.textContent = "press a key…";
+  const handler = async (event: KeyboardEvent) => {
+    event.preventDefault();
+    window.removeEventListener("keydown", handler, true);
+    leaderHintEl.textContent = "";
+    if (event.key === "Escape") return;
+    await setLeaderKey(event.key);
+    renderLeaderKey(event.key);
+  };
+  window.addEventListener("keydown", handler, true);
 }
 
 function hostnameFromUrl(url: string | undefined): string | undefined {
@@ -83,9 +111,9 @@ function renderBindings(hostname: string, bindings: Binding[]): void {
     mainRow.className = "main-row";
     const label = document.createElement("span");
     label.className = "label";
-    label.textContent = binding.fingerprint || binding.action;
+    label.textContent = binding.fingerprint ? normalizeVolatileText(binding.fingerprint) : binding.action;
     const kbd = document.createElement("kbd");
-    kbd.textContent = `\` ${binding.key}`;
+    kbd.textContent = binding.key;
     const remove = document.createElement("button");
     remove.className = "remove";
     remove.textContent = "✕";
@@ -100,6 +128,10 @@ function renderBindings(hostname: string, bindings: Binding[]): void {
 }
 
 async function init(): Promise<void> {
+  renderLeaderKey(await getLeaderKey());
+  onLeaderKeyChanged(renderLeaderKey);
+  leaderKeyEl.addEventListener("click", startLeaderKeyCapture);
+
   const tab = await getActiveTab();
   const hostname = hostnameFromUrl(tab?.url);
   if (!hostname) {

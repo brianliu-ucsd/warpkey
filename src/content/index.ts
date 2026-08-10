@@ -1,5 +1,5 @@
 import type { Binding } from "../types/binding";
-import { getHostConfig, onStoreChanged } from "../storage/store";
+import { getHostConfig, onStoreChanged, getLeaderKey, onLeaderKeyChanged } from "../storage/store";
 import { attachLeaderController } from "./leader";
 import { attachRecorder } from "./recorder";
 import { resolveSelector, performAction } from "./selector";
@@ -17,7 +17,7 @@ function fireBinding(binding: Binding): void {
     return;
   }
   if (stale) {
-    showMessage(`Warpkey: binding "${binding.key}" looks stale — re-record it?`);
+    showMessage(`Warpkey: binding "${binding.key}" looks stale - re-record it?`);
     window.setTimeout(hide, FEEDBACK_DISPLAY_MS);
     return;
   }
@@ -25,14 +25,20 @@ function fireBinding(binding: Binding): void {
 }
 
 async function main(): Promise<void> {
-  const config = await getHostConfig(location.hostname);
+  const [config, leaderKey] = await Promise.all([getHostConfig(location.hostname), getLeaderKey()]);
   bindings = config.bindings;
 
   onStoreChanged((store) => {
     bindings = store[location.hostname]?.bindings ?? [];
   });
 
-  attachLeaderController({ getBindings: () => bindings, onFire: fireBinding });
+  const controller = attachLeaderController({
+    getBindings: () => bindings,
+    onFire: fireBinding,
+    initialLeaderKey: leaderKey,
+  });
+  onLeaderKeyChanged((key) => controller.setLeaderKey(key));
+
   attachRecorder();
 }
 

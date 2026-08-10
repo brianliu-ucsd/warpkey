@@ -3,7 +3,7 @@
 Press a key, warp to the thing you always click.
 
 A Chrome extension for binding site-specific keyboard shortcuts to buttons,
-links, and fields you use every day — recorded by example, no config files
+links, and fields you use every day - recorded by example, no config files
 to hand-edit.
 
 - Open the popup on a site, click **Record**, then click the thing you want

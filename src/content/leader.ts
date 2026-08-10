@@ -1,13 +1,18 @@
 import type { Binding } from "../types/binding";
 import { showBindingList, hide } from "./overlay";
+import { DEFAULT_LEADER_KEY } from "../shared/constants";
 
-const DEFAULT_LEADER_KEY = "`";
 const CHORD_TIMEOUT_MS = 1500;
 
 export interface LeaderControllerOptions {
   getBindings: () => Binding[];
   onFire: (binding: Binding) => void;
-  leaderKey?: string;
+  initialLeaderKey: string;
+}
+
+export interface LeaderController {
+  setLeaderKey: (key: string) => void;
+  detach: () => void;
 }
 
 function isEditableTarget(target: EventTarget | null): boolean {
@@ -20,9 +25,9 @@ function matchesPath(binding: Binding, pathname: string): boolean {
   return !binding.pathPrefix || pathname.startsWith(binding.pathPrefix);
 }
 
-/** Attaches the leader-key chord listener to the page. Returns a cleanup function. */
-export function attachLeaderController(options: LeaderControllerOptions): () => void {
-  const leaderKey = options.leaderKey ?? DEFAULT_LEADER_KEY;
+/** Attaches the leader-key chord listener to the page. */
+export function attachLeaderController(options: LeaderControllerOptions): LeaderController {
+  let leaderKey = options.initialLeaderKey || DEFAULT_LEADER_KEY;
   let armed = false;
   let timeoutId: number | undefined;
 
@@ -66,5 +71,11 @@ export function attachLeaderController(options: LeaderControllerOptions): () => 
   }
 
   window.addEventListener("keydown", handleKeydown, { capture: true });
-  return () => window.removeEventListener("keydown", handleKeydown, { capture: true });
+
+  return {
+    setLeaderKey: (key: string) => {
+      leaderKey = key;
+    },
+    detach: () => window.removeEventListener("keydown", handleKeydown, { capture: true }),
+  };
 }

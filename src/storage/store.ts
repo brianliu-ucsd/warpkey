@@ -1,6 +1,8 @@
 import type { Binding, HostConfig, WarpkeyStore } from "../types/binding";
+import { DEFAULT_LEADER_KEY } from "../shared/constants";
 
 const STORAGE_KEY = "warpkey:hosts";
+const LEADER_KEY_STORAGE_KEY = "warpkey:leaderKey";
 
 async function readAll(): Promise<WarpkeyStore> {
   const result = await chrome.storage.sync.get(STORAGE_KEY);
@@ -54,5 +56,22 @@ export function onStoreChanged(callback: (store: WarpkeyStore) => void): void {
     if (areaName !== "sync") return;
     const change = changes[STORAGE_KEY];
     if (change) callback((change.newValue as WarpkeyStore | undefined) ?? {});
+  });
+}
+
+export async function getLeaderKey(): Promise<string> {
+  const result = await chrome.storage.sync.get(LEADER_KEY_STORAGE_KEY);
+  return (result[LEADER_KEY_STORAGE_KEY] as string | undefined) ?? DEFAULT_LEADER_KEY;
+}
+
+export async function setLeaderKey(key: string): Promise<void> {
+  await chrome.storage.sync.set({ [LEADER_KEY_STORAGE_KEY]: key });
+}
+
+export function onLeaderKeyChanged(callback: (key: string) => void): void {
+  chrome.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName !== "sync") return;
+    const change = changes[LEADER_KEY_STORAGE_KEY];
+    if (change) callback((change.newValue as string | undefined) ?? DEFAULT_LEADER_KEY);
   });
 }

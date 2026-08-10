@@ -13,7 +13,27 @@ h1 {
 
 #host {
   color: #666;
+  margin: 2px 0;
+}
+
+#leader-row {
+  color: #666;
   margin: 2px 0 10px;
+}
+
+#leader-key {
+  cursor: pointer;
+}
+
+#leader-key:hover,
+#leader-key:focus {
+  background: #ffdf6b;
+  border-color: #e6c452;
+}
+
+.hint {
+  color: #999;
+  font-size: 11px;
 }
 
 #record {
