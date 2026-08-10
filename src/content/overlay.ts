@@ -3,6 +3,8 @@ const HOST_ID = "warpkey-overlay-host";
 export interface OverlayEntry {
   key: string;
   label: string;
+  /** True when `label` is quoted on-page text, styled distinctly from a user-given name or the bare action. */
+  quoted?: boolean;
 }
 
 function getHost(): HTMLElement {
@@ -38,7 +40,8 @@ function getPanel(): HTMLElement {
       }
       .row { display: flex; gap: 8px; padding: 2px 0; }
       kbd { background: #333; border-radius: 3px; padding: 0 4px; color: #ffc846; }
-      .label { color: #ccc; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-style: italic; }
+      .label { color: #ccc; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .label.quoted { font-style: italic; }
       .message { color: #f2f2f2; }
     `;
     panel = document.createElement("div");
@@ -57,7 +60,7 @@ export function showBindingList(entries: OverlayEntry[]): void {
     const kbd = document.createElement("kbd");
     kbd.textContent = entry.key;
     const label = document.createElement("span");
-    label.className = "label";
+    label.className = entry.quoted ? "label quoted" : "label";
     label.textContent = entry.label;
     label.title = entry.label;
     row.append(kbd, label);

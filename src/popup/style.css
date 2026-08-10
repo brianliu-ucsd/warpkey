@@ -66,8 +66,26 @@ ul#bindings li {
   text-overflow: ellipsis;
   white-space: nowrap;
   margin: 0 6px;
-  font-style: italic;
   color: #555;
+  cursor: pointer;
+}
+
+.main-row .label:hover {
+  text-decoration: underline dotted;
+}
+
+.main-row .label.quoted {
+  font-style: italic;
+}
+
+.rename-input {
+  flex: 1;
+  margin: 0 6px;
+  font: inherit;
+  border: 1px solid #e6c452;
+  border-radius: 3px;
+  padding: 0 4px;
+  min-width: 0;
 }
 
 kbd {

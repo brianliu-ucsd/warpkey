@@ -9,7 +9,7 @@ import {
   onLeaderKeyChanged,
 } from "../storage/store";
 import { ARM_RECORD_MESSAGE, RESOLVE_LABELS_MESSAGE } from "../content/messages";
-import { quoteLiveLabel } from "../shared/text";
+import { resolveDisplayLabel } from "../shared/labels";
 
 const hostEl = document.querySelector<HTMLParagraphElement>("#host")!;
 const listEl = document.querySelector<HTMLUListElement>("#bindings")!;
@@ -109,7 +109,47 @@ function renderScopeRow(hostname: string, binding: Binding): HTMLElement {
   return row;
 }
 
+/** Bindings from the most recent render, kept so renaming can redraw without a fresh storage read. */
+let lastHostname = "";
+let lastBindings: Binding[] = [];
+
+function startRename(binding: Binding, label: HTMLElement): void {
+  const input = document.createElement("input");
+  input.type = "text";
+  input.className = "rename-input";
+  input.value = binding.name ?? "";
+  input.placeholder = "rename…";
+  label.replaceWith(input);
+  input.focus();
+  input.select();
+
+  let done = false;
+  function finish(save: boolean): void {
+    if (done) return;
+    done = true;
+    input.removeEventListener("keydown", onKeydown);
+    input.removeEventListener("blur", onBlur);
+    if (save) {
+      const value = input.value.trim();
+      void updateBinding(lastHostname, binding.id, { name: value || undefined });
+    } else {
+      renderBindings(lastHostname, lastBindings);
+    }
+  }
+  function onKeydown(event: KeyboardEvent): void {
+    if (event.key === "Enter") finish(true);
+    else if (event.key === "Escape") finish(false);
+  }
+  function onBlur(): void {
+    finish(true);
+  }
+  input.addEventListener("keydown", onKeydown);
+  input.addEventListener("blur", onBlur);
+}
+
 function renderBindings(hostname: string, bindings: Binding[]): void {
+  lastHostname = hostname;
+  lastBindings = bindings;
   listEl.innerHTML = "";
   if (bindings.length === 0) {
     const empty = document.createElement("li");
@@ -123,12 +163,16 @@ function renderBindings(hostname: string, bindings: Binding[]): void {
     const mainRow = document.createElement("div");
     mainRow.className = "main-row";
     const label = document.createElement("span");
-    label.className = "label";
     const pageText = liveLabels[binding.id] ?? binding.fingerprint;
-    label.textContent = pageText ? quoteLiveLabel(pageText) : binding.action;
-    label.title = pageText
-      ? "Current on-page text of the bound element, not a value Warpkey computed"
-      : `Warpkey action: ${binding.action}`;
+    const { text, quoted } = resolveDisplayLabel(binding, pageText);
+    label.className = quoted ? "label quoted" : "label";
+    label.textContent = text;
+    label.title = binding.name
+      ? "Custom name - click to rename"
+      : pageText
+        ? "Current on-page text of the bound element - click to give it a custom name"
+        : `Warpkey action: ${binding.action} - click to give it a custom name`;
+    label.addEventListener("click", () => startRename(binding, label));
     const kbd = document.createElement("kbd");
     kbd.textContent = binding.key;
     const remove = document.createElement("button");

@@ -2,7 +2,7 @@ import type { Binding } from "../types/binding";
 import { showBindingList, hide } from "./overlay";
 import { resolveSelector, captureFingerprint } from "./selector";
 import { DEFAULT_LEADER_KEY } from "../shared/constants";
-import { quoteLiveLabel } from "../shared/text";
+import { resolveDisplayLabel, type DisplayLabel } from "../shared/labels";
 
 const CHORD_TIMEOUT_MS = 1500;
 
@@ -27,21 +27,11 @@ function matchesPath(binding: Binding, pathname: string): boolean {
   return !binding.pathPrefix || pathname.startsWith(binding.pathPrefix);
 }
 
-/**
- * Reads the target's current on-page text rather than the fingerprint frozen
- * at record time. Quoted (via quoteLiveLabel) whenever it's real page text,
- * so it can't be mistaken for a value Warpkey computed itself; the bare
- * action name is the only unquoted fallback, used when no page text is
- * available at all.
- */
-function liveLabel(binding: Binding): string {
+/** Prefers a user-given name; otherwise reads the target's current on-page text rather than the fingerprint frozen at record time. */
+function liveLabel(binding: Binding): DisplayLabel {
   const { element } = resolveSelector(binding.selector, binding.fingerprint);
-  if (element) {
-    const text = captureFingerprint(element);
-    if (text) return quoteLiveLabel(text);
-  }
-  if (binding.fingerprint) return quoteLiveLabel(binding.fingerprint);
-  return binding.action;
+  const liveText = element ? captureFingerprint(element) : "";
+  return resolveDisplayLabel(binding, liveText || binding.fingerprint || undefined);
 }
 
 /** Attaches the leader-key chord listener to the page. */
@@ -67,7 +57,12 @@ export function attachLeaderController(options: LeaderControllerOptions): Leader
     // Rendering (including live selector resolution) is best-effort: a failure here
     // must not leave `armed` stuck true with no timeout scheduled to clear it.
     try {
-      showBindingList(bindings.map((b) => ({ key: b.key, label: liveLabel(b) })));
+      showBindingList(
+        bindings.map((b) => {
+          const { text, quoted } = liveLabel(b);
+          return { key: b.key, label: text, quoted };
+        }),
+      );
     } catch (error) {
       console.error("Warpkey: failed to render the which-key overlay", error);
     }

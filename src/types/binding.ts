@@ -20,6 +20,8 @@ export interface Binding {
   recordedPath: string;
   /** Optional path restriction, e.g. "/settings". Binding only fires when the current path starts with this. Unset = fires on every path for the hostname. */
   pathPrefix?: string;
+  /** User-given display name. Unset = fall back to live on-page text, then the stored fingerprint, then the action name. */
+  name?: string;
   createdAt: number;
 }
 

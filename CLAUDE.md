@@ -22,7 +22,8 @@ TypeScript, Vite + `@crxjs/vite-plugin`, vanilla popup (no UI framework).
 - `src/content/selector.ts` - selector-chain build/resolve, fingerprint drift check, action execution
 - `src/content/recorder.ts` - record-mode click capture → key capture → save binding
 - `src/storage/store.ts` - `chrome.storage.sync` read/write: per-host bindings plus the global leader key
-- `src/shared/text.ts` - digit-normalization used by both drift detection and popup display labels
+- `src/shared/text.ts` - digit-normalization for drift detection; quoting helper for on-page-text labels
+- `src/shared/labels.ts` - resolves what to display for a binding (custom name > live page text > action), shared by the popup and the on-page overlay
 - `src/shared/constants.ts` - `DEFAULT_LEADER_KEY`
 - `src/popup/` - list/delete/rescope bindings for the active tab's site, arm recording, view/change the leader key
 

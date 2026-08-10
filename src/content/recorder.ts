@@ -3,9 +3,10 @@ import { addBinding } from "../storage/store";
 import { buildSelectorChain, captureFingerprint } from "./selector";
 import { showMessage, hide } from "./overlay";
 import { ARM_RECORD_MESSAGE } from "./messages";
+import { quoteLiveLabel } from "../shared/text";
 
 const KEY_CAPTURE_TIMEOUT_MS = 10_000;
-const CONFIRMATION_DISPLAY_MS = 1200;
+const CONFIRMATION_DISPLAY_MS = 1800;
 
 function nearestInteractiveAncestor(el: Element): Element {
   return el.closest("button, a, [role], input, select, textarea, summary") ?? el;
@@ -75,7 +76,8 @@ function captureKey(
       createdAt: Date.now(),
     };
     await addBinding(location.hostname, binding);
-    showMessage(`Warpkey: bound "${event.key}"`);
+    const target = fingerprint ? ` to ${quoteLiveLabel(fingerprint)}` : "";
+    showMessage(`Warpkey: bound "${event.key}"${target}`);
     window.setTimeout(hide, CONFIRMATION_DISPLAY_MS);
   }
 

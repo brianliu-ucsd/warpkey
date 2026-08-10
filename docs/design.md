@@ -73,7 +73,10 @@ page is captured, walked up to the nearest interactive ancestor (button,
 link, role, form control), and turned into a selector chain + fingerprint.
 The action type is inferred: form controls → `focus`, everything else →
 `click`. The user then presses the key to bind (Escape cancels), and the
-binding is saved directly to `chrome.storage.sync`.
+binding is saved directly to `chrome.storage.sync`. The overlay then confirms
+what happened - `` Warpkey: bound "x" to "Compose button" `` - for the same
+`CONFIRMATION_DISPLAY_MS` window used elsewhere, so a successful bind is
+visible without having to open the popup to check.
 
 ## Storage
 
@@ -83,15 +86,16 @@ plus a separate top-level key for the global leader key setting. Gives
 cross-device sync; known quota risk for heavy users (~8KB per item, ~100KB
 total) noted in the feasibility doc.
 
-## Display labels: live, not the stored fingerprint
+## Display labels: custom name, else live page text, else the action
 
-The stored `fingerprint` is a record-time snapshot used only for drift
-detection (above); showing it directly as a label would freeze at whatever
-text existed the moment the binding was recorded, which for a target like a
-click counter is stale from the very first use. Both display surfaces instead
-re-resolve the binding's selector against the live DOM and show whatever text
-is there right now, falling back to the stored fingerprint (or the action
-name) only when the element can't currently be resolved:
+A binding may have a user-given `name` (below); if unset, the label falls
+back to live on-page text rather than the stored fingerprint. The stored
+`fingerprint` is a record-time snapshot used only for drift detection
+(above) - showing it directly as a label would freeze at whatever text
+existed the moment the binding was recorded, which for a target like a click
+counter is stale from the very first use. Resolution is centralized in
+`resolveDisplayLabel` (`src/shared/labels.ts`) so the popup and the on-page
+overlay stay identical:
 
 - The on-page "which key?" overlay resolves live directly, since it already
   runs in the same document as the target (`liveLabel` in `src/content/leader.ts`).
@@ -105,12 +109,21 @@ name) only when the element can't currently be resolved:
 A target's on-page text can be anything - including something that reads like
 an app-native stat, e.g. a click counter or unread badge - which risks being
 mistaken for a value Warpkey itself computed (a per-binding usage count, say;
-it tracks none). Both surfaces disambiguate by quoting: any label sourced
-from real page text is wrapped in curly quotes and styled italic
-(`quoteLiveLabel` in `src/shared/text.ts`); the only unquoted label is the
-bare action name (`click`/`focus`/`scroll-to`), shown only when no page text
-could be resolved at all. Quoting is the general fix - it holds for any
-site's own confusing element text, not just this project's test fixture.
+it tracks none). Labels sourced from real page text are wrapped in curly
+quotes and styled italic (`quoteLiveLabel` in `src/shared/text.ts`) to mark
+them as a literal excerpt; a custom name or the bare action name
+(`click`/`focus`/`scroll-to`) are shown unquoted, since neither is page text.
+Quoting is the general fix - it holds for any site's own confusing element
+text, not just this project's test fixture.
+
+## Renaming a binding
+
+Click a binding's label in the popup to rename it (`startRename` in
+`src/popup/main.ts`): it swaps in a text input, Enter or blur saves, Escape
+cancels. Saving an empty value clears the name, reverting to the live/
+fingerprint/action fallback above. The name is stored directly on the
+binding (`Binding.name`) via the existing `updateBinding`, so it syncs and
+propagates to the on-page overlay the same way any other binding edit does.
 
 ## Known v1 limitations (documented, not fixed)
 
