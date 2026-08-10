@@ -1,0 +1,69 @@
+# Verification
+
+Manual test flows for Warpkey. There's no automated E2E coverage yet — MV3
+content-script/DOM interaction isn't exercised by `npm test` (that's
+Vitest, for pure logic only). Each flow below references the `docs/design.md`
+section it's checking.
+
+## Load the extension
+
+1. `cd ~/Projects/warpkey && npm run build`
+2. `chrome://extensions` → enable **Developer mode** (top right)
+3. **Load unpacked** → select the `dist/` folder
+4. After any code change: `npm run build` again, then click the reload icon
+   on Warpkey's card in `chrome://extensions`, then reload any tab you're
+   testing on (content scripts only (re-)inject on page load)
+
+### Serving the test fixture
+
+Flows below use `test-pages/fixture.html`, a static page with known DOM
+structure, so selector-tier and drift tests are repeatable instead of
+depending on a live site's current markup. Serve it locally rather than
+opening via `file://` (Chrome content scripts don't run on `file://` URLs
+unless you separately grant "Allow access to file URLs" per extension):
+
+```
+python3 -m http.server 8000 --directory test-pages
+```
+
+Then open `http://localhost:8000/fixture.html`.
+
+## Usability test flows
+
+| # | Competency (design.md ref) | Steps | Expected result |
+|---|---|---|---|
+| 1 | Core record → fire loop ("Recording", "Key model") | On the fixture page: open popup → **Record** → click the **TestID-tier button** → press `x`. Then press `` ` `` then `x` anywhere on the page. | Popup shows the new binding. `` ` x `` increments the testid counter — same as clicking it directly. |
+| 2 | Selector fallback — testid tier | Record a binding on the **TestID-tier button** (as in #1). In devtools console: `document.querySelector('[data-testid="warpkey-testid-button"]').removeAttribute('id')` (no-op, it has none) — instead confirm via console that `chrome.storage` recorded `selector.testId` set. | Binding's stored selector has `testId` populated; firing still works after a page reload. |
+| 3 | Selector fallback — id tier | Record a binding on the **ID-tier button** (`x` counter). Fire it after a page reload. | Fires correctly; recorded selector has `id` set and no `testId`. |
+| 4 | Selector fallback — aria tier | Record a binding on the **Aria-tier target** (`div[role=button]`). Fire it after a page reload. | Fires correctly; recorded selector has `ariaRole`/`ariaName` set, no `id`/`testId`. |
+| 5 | Selector fallback — structural tier | Record a binding on the **Structural-tier target** (the plain `<span>`). Fire it after a page reload. | Fires correctly via `structuralPath` alone — the weakest tier, worth confirming it isn't silently broken. |
+| 6 | Action-type inference ("Recording") | Record a binding on the **focus-target** `<input>`. Click elsewhere to blur it, then fire the binding. | The input receives focus (cursor appears in it) — not a click. |
+| 7 | Leader overlay + timeout ("Key model") | With at least one binding recorded, press `` ` `` and wait ~2s without pressing another key. | The "which key?" overlay appears listing bindings, then disappears on its own after ~1.5s. |
+| 8 | Escape cancels an armed chord ("Key model") | Press `` ` ``, then press `Escape`. | Overlay disappears immediately, no action fires. |
+| 9 | Editable-field guard ("Key model") | Click into the fixture's text input, type a sentence containing a backtick, e.g. `` the `quick` fox ``. | Both backticks are inserted as literal characters — leader mode never arms, typing is uninterrupted. |
+| 10 | No-bindings no-op (edge case) | On a fresh hostname with zero recorded bindings, press `` ` ``. | Nothing happens — no overlay flash, no error in the console. |
+| 11 | Recording: Escape cancels ("Recording") | Open popup → **Record** → click any target → press `Escape` instead of a key. | Overlay hides, popup shows no new binding was added. |
+| 12 | Recording: key-capture timeout ("Recording") | Open popup → **Record** → click a target → wait 10+ seconds without pressing a key. | The prompt overlay clears itself; no binding is saved (confirm via popup). |
+| 13 | Popup delete ("Storage") | With 2+ bindings recorded, delete one via the popup's ✕. | The deleted binding no longer fires; the other still does; popup list updates live. |
+| 14 | Selector drift → stale notice, not misfire ("Selector drift safety") | Record a binding on the **ID-tier button**. In devtools console, change its text: `document.getElementById('warpkey-id-button').firstChild.textContent = 'Changed!'`. Fire the binding. | Overlay shows a "looks stale — re-record it?" message; the button's click handler does **not** run (counter doesn't increment). |
+| 15 | Persists across SPA navigation ("Binding target") | Record a global binding on a real client-routed app (e.g. GitHub's left nav). Navigate to another in-app route without a full page reload. Fire the binding. | Still fires correctly — bindings are hostname-scoped and `location.pathname` is read live at fire time, not cached at page load. |
+| 16 | Multi-device sync | Sign into the same Chrome profile on a second machine (or a second Chrome profile), record a binding on one, check the popup on the other. | Binding appears after `chrome.storage.sync` propagates (may take a few seconds). Not automatable — needs two real profiles. |
+
+## Known gap: `pathPrefix` is untestable via UI
+
+`design.md` describes `pathPrefix` as user-editable, but the popup only
+supports record/list/delete — there's no UI yet to set or edit it. Until
+that's built, the only way to exercise path-scoped bindings is to set it
+directly:
+
+```js
+chrome.storage.sync.get("warpkey:hosts", (r) => {
+  const store = r["warpkey:hosts"];
+  store["<hostname>"].bindings[0].pathPrefix = "/some/path";
+  chrome.storage.sync.set({ "warpkey:hosts": store });
+});
+```
+
+Run in the extension's popup devtools console, then confirm the binding
+only fires on matching paths and is silently excluded elsewhere (per
+`leader.ts`'s `matchesPath`).
