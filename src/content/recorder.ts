@@ -71,6 +71,7 @@ function captureKey(
       selector,
       fingerprint,
       action,
+      recordedPath: location.pathname,
       createdAt: Date.now(),
     };
     await addBinding(location.hostname, binding);

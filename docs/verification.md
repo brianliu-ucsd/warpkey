@@ -48,22 +48,5 @@ Then open `http://localhost:8000/fixture.html`.
 | 14 | Selector drift → stale notice, not misfire ("Selector drift safety") | Record a binding on the **ID-tier button**. In devtools console, change its text: `document.getElementById('warpkey-id-button').firstChild.textContent = 'Changed!'`. Fire the binding. | Overlay shows a "looks stale — re-record it?" message; the button's click handler does **not** run (counter doesn't increment). |
 | 15 | Persists across SPA navigation ("Binding target") | Record a global binding on a real client-routed app (e.g. GitHub's left nav). Navigate to another in-app route without a full page reload. Fire the binding. | Still fires correctly — bindings are hostname-scoped and `location.pathname` is read live at fire time, not cached at page load. |
 | 16 | Multi-device sync | Sign into the same Chrome profile on a second machine (or a second Chrome profile), record a binding on one, check the popup on the other. | Binding appears after `chrome.storage.sync` propagates (may take a few seconds). Not automatable — needs two real profiles. |
-
-## Known gap: `pathPrefix` is untestable via UI
-
-`design.md` describes `pathPrefix` as user-editable, but the popup only
-supports record/list/delete — there's no UI yet to set or edit it. Until
-that's built, the only way to exercise path-scoped bindings is to set it
-directly:
-
-```js
-chrome.storage.sync.get("warpkey:hosts", (r) => {
-  const store = r["warpkey:hosts"];
-  store["<hostname>"].bindings[0].pathPrefix = "/some/path";
-  chrome.storage.sync.set({ "warpkey:hosts": store });
-});
-```
-
-Run in the extension's popup devtools console, then confirm the binding
-only fires on matching paths and is silently excluded elsewhere (per
-`leader.ts`'s `matchesPath`).
+| 17 | Path-scoped binding via breadcrumb chips ("Binding target") | Record a binding on a page with a multi-segment path (e.g. a GitHub repo's Issues tab, `/owner/repo/issues`). In the popup, click the `repo`-segment chip instead of leaving it on "any path". Navigate to a sibling route under the same `/owner/repo` prefix (e.g. `/owner/repo/pulls`) and fire the binding, then navigate to an unrelated path (e.g. `/owner/other-repo`) and try again. | Fires on `/owner/repo/pulls` (shares the selected prefix) but not on `/owner/other-repo` (doesn't). Reopening the popup shows the chosen chip still highlighted. |
+| 18 | Clearing scope back to "any path" ("Binding target") | With the scoped binding from #17, reopen the popup and click the **any path** chip. | Binding now fires on both the original and the unrelated path; **any path** chip shows as active, no chip from #17 remains active. |

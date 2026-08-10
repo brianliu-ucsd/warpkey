@@ -12,6 +12,14 @@ that "abcdef" and "djfoiejwof" are interchangeable path IDs. An optional
 `pathPrefix` lets a binding be restricted to part of a site where the same key
 should mean something else (e.g. different sections of one app).
 
+Each binding also stores `recordedPath` (`location.pathname` at record time).
+The popup renders this as clickable breadcrumb chips — "any path" plus one
+chip per path segment — so trimming scope is click-to-truncate rather than
+freeform regex/glob editing: clicking `analytics` sets `pathPrefix` to
+`/analytics` (fires anywhere under that section); clicking a deeper segment
+narrows further; "any path" clears the restriction entirely. See
+`renderScopeRow` in `src/popup/main.ts`.
+
 **Scope cut for v1: global/fixed-chrome actions only** (compose button, search,
 settings/nav links). Contextual per-item actions ("archive THIS email row") are
 out of scope — a single recorded selector can't express "the item I'm looking
@@ -56,7 +64,7 @@ binding is saved directly to `chrome.storage.sync`.
 ## Storage
 
 `chrome.storage.sync`, one JSON object keyed by hostname, each holding a list
-of bindings (`{ id, key, selector, fingerprint, action, pathPrefix?, createdAt }`).
+of bindings (`{ id, key, selector, fingerprint, action, recordedPath, pathPrefix?, createdAt }`).
 Gives cross-device sync; known quota risk for heavy users (~8KB per item,
 ~100KB total) noted in the feasibility doc.
 

@@ -23,6 +23,21 @@ export async function addBinding(hostname: string, binding: Binding): Promise<vo
   await writeAll(store);
 }
 
+export async function updateBinding(
+  hostname: string,
+  bindingId: string,
+  patch: Partial<Binding>,
+): Promise<void> {
+  const store = await readAll();
+  const existing = store[hostname];
+  if (!existing) return;
+  store[hostname] = {
+    ...existing,
+    bindings: existing.bindings.map((b) => (b.id === bindingId ? { ...b, ...patch } : b)),
+  };
+  await writeAll(store);
+}
+
 export async function removeBinding(hostname: string, bindingId: string): Promise<void> {
   const store = await readAll();
   const existing = store[hostname];

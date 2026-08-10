@@ -34,11 +34,22 @@ ul#bindings {
 }
 
 ul#bindings li {
+  padding: 6px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.main-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 6px 0;
-  border-bottom: 1px solid #eee;
+}
+
+.main-row .label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin: 0 6px;
 }
 
 kbd {
@@ -55,4 +66,33 @@ kbd {
   border: none;
   background: none;
   font-size: 14px;
+}
+
+.scope-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.scope-caption {
+  color: #999;
+  font-size: 11px;
+}
+
+.chip {
+  font: 11px ui-monospace, monospace;
+  border: 1px solid #ddd;
+  background: #fafafa;
+  border-radius: 10px;
+  padding: 1px 7px;
+  cursor: pointer;
+  color: #555;
+}
+
+.chip.active {
+  background: #ffdf6b;
+  border-color: #e6c452;
+  color: #1a1a1a;
 }

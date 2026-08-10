@@ -1,5 +1,5 @@
 import type { Binding } from "../types/binding";
-import { getHostConfig, onStoreChanged, removeBinding } from "../storage/store";
+import { getHostConfig, onStoreChanged, removeBinding, updateBinding } from "../storage/store";
 import { ARM_RECORD_MESSAGE } from "../content/messages";
 
 const hostEl = document.querySelector<HTMLParagraphElement>("#host")!;
@@ -20,6 +20,54 @@ function hostnameFromUrl(url: string | undefined): string | undefined {
   }
 }
 
+interface ScopeSegment {
+  /** Display label, e.g. "analytics". */
+  label: string;
+  /** Cumulative path prefix through this segment, e.g. "/analytics". */
+  prefix: string;
+}
+
+function scopeSegments(recordedPath: string): ScopeSegment[] {
+  const segments = recordedPath.split("/").filter(Boolean);
+  const result: ScopeSegment[] = [];
+  let prefix = "";
+  for (const label of segments) {
+    prefix += `/${label}`;
+    result.push({ label, prefix });
+  }
+  return result;
+}
+
+function renderScopeRow(hostname: string, binding: Binding): HTMLElement {
+  const row = document.createElement("div");
+  row.className = "scope-row";
+
+  const caption = document.createElement("span");
+  caption.className = "scope-caption";
+  caption.textContent = "scope:";
+  row.appendChild(caption);
+
+  function addChip(label: string, prefix: string | undefined): void {
+    const chip = document.createElement("button");
+    chip.className = "chip";
+    chip.type = "button";
+    chip.textContent = label;
+    chip.title = prefix ? `Only fire when the path starts with "${prefix}"` : "Fire on every path for this site";
+    if ((binding.pathPrefix ?? undefined) === prefix) chip.classList.add("active");
+    chip.addEventListener("click", async () => {
+      await updateBinding(hostname, binding.id, { pathPrefix: prefix });
+    });
+    row.appendChild(chip);
+  }
+
+  addChip("any path", undefined);
+  for (const segment of scopeSegments(binding.recordedPath)) {
+    addChip(segment.label, segment.prefix);
+  }
+
+  return row;
+}
+
 function renderBindings(hostname: string, bindings: Binding[]): void {
   listEl.innerHTML = "";
   if (bindings.length === 0) {
@@ -30,7 +78,11 @@ function renderBindings(hostname: string, bindings: Binding[]): void {
   }
   for (const binding of bindings) {
     const li = document.createElement("li");
+
+    const mainRow = document.createElement("div");
+    mainRow.className = "main-row";
     const label = document.createElement("span");
+    label.className = "label";
     label.textContent = binding.fingerprint || binding.action;
     const kbd = document.createElement("kbd");
     kbd.textContent = `\` ${binding.key}`;
@@ -39,9 +91,10 @@ function renderBindings(hostname: string, bindings: Binding[]): void {
     remove.textContent = "✕";
     remove.addEventListener("click", async () => {
       await removeBinding(hostname, binding.id);
-      renderBindings(hostname, bindings.filter((b) => b.id !== binding.id));
     });
-    li.append(kbd, label, remove);
+    mainRow.append(kbd, label, remove);
+
+    li.append(mainRow, renderScopeRow(hostname, binding));
     listEl.appendChild(li);
   }
 }

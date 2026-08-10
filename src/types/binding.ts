@@ -16,7 +16,9 @@ export interface Binding {
   /** Visible text / accessible name captured at record time, used to detect selector drift. */
   fingerprint: string;
   action: ActionKind;
-  /** Optional path restriction, e.g. "/settings". Binding only fires when the current path starts with this. */
+  /** location.pathname at record time, e.g. "/analytics/abcdef". Offered in the popup as truncatable scope segments. */
+  recordedPath: string;
+  /** Optional path restriction, e.g. "/settings". Binding only fires when the current path starts with this. Unset = fires on every path for the hostname. */
   pathPrefix?: string;
   createdAt: number;
 }
