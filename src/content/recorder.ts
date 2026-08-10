@@ -34,6 +34,11 @@ export function attachRecorder(): void {
     (event) => {
       if (!recording) return;
       recording = false;
+      // Suppress the click entirely - both its default action (link
+      // navigation, form submission) and delivery to the page's own
+      // handlers - so recording a binding never actually performs it.
+      event.preventDefault();
+      event.stopPropagation();
       const target = nearestInteractiveAncestor(event.target as Element);
       const selector = buildSelectorChain(target);
       const fingerprint = captureFingerprint(target);

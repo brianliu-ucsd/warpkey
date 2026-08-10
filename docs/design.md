@@ -69,10 +69,15 @@ then closes itself immediately (`window.close()`) rather than waiting for the
 user to click away - a click outside the popup dismisses it without also
 reaching the page, so leaving it open would silently swallow the user's next
 click instead of having the content script see it. The next click on the
-page is captured, walked up to the nearest interactive ancestor (button,
-link, role, form control), and turned into a selector chain + fingerprint.
-The action type is inferred: form controls → `focus`, everything else →
-`click`. The user then presses the key to bind (Escape cancels), and the
+page is captured in the capture phase with `preventDefault`/`stopPropagation`
+called immediately, so the click is recorded but never actually happens -
+no navigation, form submission, or site-side click handler runs. This
+matters most for links: recording a binding on a link that routes elsewhere
+(including off-site) shouldn't require actually going there. The captured
+target is walked up to the nearest interactive ancestor (button, link, role,
+form control) and turned into a selector chain + fingerprint. The action
+type is inferred: form controls → `focus`, everything else → `click`. The
+user then presses the key to bind (Escape cancels), and the
 binding is saved directly to `chrome.storage.sync`. The overlay then confirms
 what happened - `` Warpkey: bound "x" to "Compose button" `` - for the same
 `CONFIRMATION_DISPLAY_MS` window used elsewhere, so a successful bind is
