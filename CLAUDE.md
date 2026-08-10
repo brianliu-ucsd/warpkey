@@ -4,13 +4,13 @@ Chrome MV3 extension: press a leader key (default `` ` ``), then a letter, to
 click/focus/scroll-to a recorded element on the current site.
 
 ## Stack
-TypeScript, Vite + `@crxjs/vite-plugin`, vanilla popup (no UI framework),
-Vitest for unit tests. `chrome.storage.sync` for persistence.
+TypeScript, Vite + `@crxjs/vite-plugin`, vanilla popup (no UI framework).
+`chrome.storage.sync` for persistence. No unit test setup yet - see
+"Current scope" below.
 
 ## Commands
 - `npm run dev` - Vite dev server with HMR for the content script
 - `npm run build` - type-check + production build to `dist/`
-- `npm test` - Vitest
 
 ## Load in Chrome
 `npm run build`, then `chrome://extensions` → Developer Mode → Load unpacked → `dist/`.
@@ -34,3 +34,11 @@ selector strategy, or key-capture approach.
 v1 only supports bindings to fixed/global elements (nav, compose, search,
 settings). Per-item/contextual actions are an explicit, documented v2 gap -
 see `docs/design.md`.
+
+## TODO
+- Unit tests for pure logic (`normalizeVolatileText`/`quoteLiveLabel` in
+  `src/shared/text.ts`, selector-chain build/resolve in
+  `src/content/selector.ts`). Deferred: no meaningful logic complex enough
+  to warrant it yet, and Vitest/`npm test` were removed as unused after
+  sitting with zero test files. Add a test runner back when there's an
+  actual test to write.

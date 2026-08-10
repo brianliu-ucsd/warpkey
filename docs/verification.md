@@ -1,9 +1,9 @@
 # Verification
 
-Manual test flows for Warpkey. There's no automated E2E coverage yet - MV3
-content-script/DOM interaction isn't exercised by `npm test` (that's
-Vitest, for pure logic only). Each flow below references the `docs/design.md`
-section it's checking.
+Manual test flows for Warpkey. There's no automated coverage yet - MV3
+content-script/DOM interaction can't be exercised without a browser, and
+there's no unit test runner set up either (see the TODO in `CLAUDE.md`).
+Each flow below references the `docs/design.md` section it's checking.
 
 ## Load the extension
 

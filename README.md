@@ -19,7 +19,6 @@ does and doesn't handle well.
 npm install
 npm run dev     # Vite dev server with HMR
 npm run build   # production build to dist/
-npm test        # unit tests
 ```
 
 Load `dist/` as an unpacked extension via `chrome://extensions` → Developer Mode.

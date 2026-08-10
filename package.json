@@ -5,8 +5,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build",
-    "test": "vitest run"
+    "build": "tsc --noEmit && vite build"
   },
   "keywords": [],
   "author": "",
@@ -16,7 +15,6 @@
     "@crxjs/vite-plugin": "^2.7.1",
     "@types/chrome": "^0.2.5",
     "typescript": "^7.0.2",
-    "vite": "^8.2.1",
-    "vitest": "^4.1.10"
+    "vite": "^8.2.1"
   }
 }
