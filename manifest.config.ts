@@ -21,5 +21,7 @@ export default defineManifest({
       run_at: "document_idle",
     },
   ],
-  permissions: ["storage"],
+  // activeTab (not the broader "tabs" permission) grants tab.url access only for
+  // the tab the user invokes the popup on - exactly what's needed to read its hostname.
+  permissions: ["storage", "activeTab"],
 });
