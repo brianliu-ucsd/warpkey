@@ -38,7 +38,7 @@ function getPanel(): HTMLElement {
       }
       .row { display: flex; gap: 8px; padding: 2px 0; }
       kbd { background: #333; border-radius: 3px; padding: 0 4px; color: #ffc846; }
-      .label { color: #ccc; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .label { color: #ccc; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-style: italic; }
       .message { color: #f2f2f2; }
     `;
     panel = document.createElement("div");
@@ -59,6 +59,7 @@ export function showBindingList(entries: OverlayEntry[]): void {
     const label = document.createElement("span");
     label.className = "label";
     label.textContent = entry.label;
+    label.title = entry.label;
     row.append(kbd, label);
     panel.appendChild(row);
   }

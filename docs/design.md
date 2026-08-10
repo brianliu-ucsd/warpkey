@@ -102,6 +102,16 @@ name) only when the element can't currently be resolved:
   works when the binding's target is actually present on the currently open
   page; elsewhere it falls back to the stored fingerprint.
 
+A target's on-page text can be anything - including something that reads like
+an app-native stat, e.g. a click counter or unread badge - which risks being
+mistaken for a value Warpkey itself computed (a per-binding usage count, say;
+it tracks none). Both surfaces disambiguate by quoting: any label sourced
+from real page text is wrapped in curly quotes and styled italic
+(`quoteLiveLabel` in `src/shared/text.ts`); the only unquoted label is the
+bare action name (`click`/`focus`/`scroll-to`), shown only when no page text
+could be resolved at all. Quoting is the general fix - it holds for any
+site's own confusing element text, not just this project's test fixture.
+
 ## Known v1 limitations (documented, not fixed)
 
 - **Synthetic events aren't trusted** (`isTrusted: false`) - some sites'

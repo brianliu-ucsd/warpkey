@@ -9,6 +9,7 @@ import {
   onLeaderKeyChanged,
 } from "../storage/store";
 import { ARM_RECORD_MESSAGE, RESOLVE_LABELS_MESSAGE } from "../content/messages";
+import { quoteLiveLabel } from "../shared/text";
 
 const hostEl = document.querySelector<HTMLParagraphElement>("#host")!;
 const listEl = document.querySelector<HTMLUListElement>("#bindings")!;
@@ -123,7 +124,11 @@ function renderBindings(hostname: string, bindings: Binding[]): void {
     mainRow.className = "main-row";
     const label = document.createElement("span");
     label.className = "label";
-    label.textContent = liveLabels[binding.id] ?? binding.fingerprint ?? binding.action;
+    const pageText = liveLabels[binding.id] ?? binding.fingerprint;
+    label.textContent = pageText ? quoteLiveLabel(pageText) : binding.action;
+    label.title = pageText
+      ? "Current on-page text of the bound element, not a value Warpkey computed"
+      : `Warpkey action: ${binding.action}`;
     const kbd = document.createElement("kbd");
     kbd.textContent = binding.key;
     const remove = document.createElement("button");
