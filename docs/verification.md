@@ -30,9 +30,17 @@ Then open `http://localhost:8000/fixture.html`.
 
 ## Usability test flows
 
+Flows 1–5 use the fixture's counter-driven targets, which double as a
+regression check for fingerprint digit-normalization: the recording click
+itself bumps the counter (e.g. from "clicks: 0" to "clicks: 1") after the
+fingerprint was captured, so the very first fire afterward would show a
+mismatch if digit runs weren't normalized away. If any of these flows report
+"looks stale" on the first fire, that normalization has regressed — see
+"Selector drift safety" in `docs/design.md`.
+
 | # | Competency (design.md ref) | Steps | Expected result |
 |---|---|---|---|
-| 1 | Core record → fire loop ("Recording", "Key model") | On the fixture page: open popup → **Record** → click the **TestID-tier button** → press `x`. Then press `` ` `` then `x` anywhere on the page. | Popup shows the new binding. `` ` x `` increments the testid counter — same as clicking it directly. |
+| 1 | Core record → fire loop ("Recording", "Key model") | On the fixture page: open popup → **Record** → click the **TestID-tier button** → press `x`. Then press `` ` `` then `x` anywhere on the page. | Popup shows the new binding. `` ` x `` increments the testid counter — same as clicking it directly, not flagged as stale. |
 | 2 | Selector fallback — testid tier | Record a binding on the **TestID-tier button** (as in #1). In devtools console: `document.querySelector('[data-testid="warpkey-testid-button"]').removeAttribute('id')` (no-op, it has none) — instead confirm via console that `chrome.storage` recorded `selector.testId` set. | Binding's stored selector has `testId` populated; firing still works after a page reload. |
 | 3 | Selector fallback — id tier | Record a binding on the **ID-tier button** (`x` counter). Fire it after a page reload. | Fires correctly; recorded selector has `id` set and no `testId`. |
 | 4 | Selector fallback — aria tier | Record a binding on the **Aria-tier target** (`div[role=button]`). Fire it after a page reload. | Fires correctly; recorded selector has `ariaRole`/`ariaName` set, no `id`/`testId`. |

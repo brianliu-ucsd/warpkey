@@ -40,6 +40,14 @@ target. At fire time, if the resolved element's fingerprint doesn't match, the
 binding is treated as stale and the action is skipped with a visible notice
 instead of firing on the wrong element.
 
+Comparison normalizes away digit runs (`"clicks: 0"` vs. `"clicks: 1"` count
+as equal) so elements whose visible text legitimately changes as a side
+effect of the bound action itself — unread counts, cart badges, "N selected"
+— don't get falsely flagged as stale on the very first fire after recording.
+A real text change (e.g. a button relabeled from "Archive" to "Delete") still
+correctly trips the stale check. See `normalizeForComparison` in
+`src/content/selector.ts`.
+
 ## Key model: leader-key chord, not per-binding modifiers
 
 Default leader key `` ` `` (customizable). Press leader → a short-lived
@@ -53,9 +61,12 @@ editable field, so it doesn't interfere with typing.
 
 ## Recording
 
-Popup "Record" button arms the active tab's content script (message passing,
-since the popup closes as soon as the user clicks into the page). The next
-click is captured, walked up to the nearest interactive ancestor (button,
+Popup "Record" button arms the active tab's content script (message passing),
+then closes itself immediately (`window.close()`) rather than waiting for the
+user to click away — a click outside the popup dismisses it without also
+reaching the page, so leaving it open would silently swallow the user's next
+click instead of having the content script see it. The next click on the
+page is captured, walked up to the nearest interactive ancestor (button,
 link, role, form control), and turned into a selector chain + fingerprint.
 The action type is inferred: form controls → `focus`, everything else →
 `click`. The user then presses the key to bind (Escape cancels), and the

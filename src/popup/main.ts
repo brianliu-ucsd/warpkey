@@ -118,8 +118,10 @@ async function init(): Promise<void> {
   recordBtn.addEventListener("click", async () => {
     if (!tab?.id) return;
     await chrome.tabs.sendMessage(tab.id, { type: ARM_RECORD_MESSAGE });
-    recordBtn.classList.add("armed");
-    recordBtn.textContent = "Go click something on the page…";
+    // Close immediately rather than waiting for the user to click away: an
+    // outside click dismisses the popup without also reaching the page, so
+    // the "next click" the content script needs would otherwise be swallowed.
+    window.close();
   });
 }
 

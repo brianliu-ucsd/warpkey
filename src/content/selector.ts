@@ -35,6 +35,16 @@ export function captureFingerprint(el: Element): string {
   return text.trim().slice(0, 120);
 }
 
+/**
+ * Digit runs are normalized away before comparing fingerprints, so elements whose
+ * visible text legitimately changes as a side effect of the bound action itself
+ * (unread counts, cart badges, "N selected") don't get falsely flagged as stale
+ * on the very first fire after recording.
+ */
+function normalizeForComparison(text: string): string {
+  return text.replace(/\d+/g, "#");
+}
+
 function tryQueryAll(selector: string): Element[] {
   try {
     return Array.from(document.querySelectorAll(selector));
@@ -76,7 +86,9 @@ export function resolveSelector(chain: SelectorChain, expectedFingerprint: strin
   const element = resolveByTier(chain);
   if (!element) return { element: null, stale: false };
   const currentFingerprint = captureFingerprint(element);
-  const stale = expectedFingerprint.length > 0 && currentFingerprint !== expectedFingerprint;
+  const stale =
+    expectedFingerprint.length > 0 &&
+    normalizeForComparison(currentFingerprint) !== normalizeForComparison(expectedFingerprint);
   return { element, stale };
 }
 
