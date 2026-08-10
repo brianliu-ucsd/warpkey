@@ -1,0 +1,72 @@
+# Design
+
+Warpkey binds a leader-key chord (default `` ` `` then a letter) to a DOM action
+(click / focus / scroll-to) on a specific site, recorded by example.
+
+## Binding target: (hostname, DOM selector), not URL pattern
+
+Bindings key off the hostname plus a recorded DOM selector, not the URL path.
+A selector like a `data-testid` naturally generalizes across pages under a site
+(e.g. `/analytics/abcdef` and `/analytics/djfoiejwof`) without needing to detect
+that "abcdef" and "djfoiejwof" are interchangeable path IDs. An optional
+`pathPrefix` lets a binding be restricted to part of a site where the same key
+should mean something else (e.g. different sections of one app).
+
+**Scope cut for v1: global/fixed-chrome actions only** (compose button, search,
+settings/nav links). Contextual per-item actions ("archive THIS email row") are
+out of scope — a single recorded selector can't express "the item I'm looking
+at right now." See `docs/feasibility.md`. Candidate v2 approaches: resolve
+relative to current focus/hover, or a Vimium-style hint overlay for
+disambiguation.
+
+## Selector strategy: ranked fallback chain
+
+Recorded at bind time, tried in order at fire time until one resolves to
+exactly one element: `data-testid` → `id` → ARIA role + accessible name →
+structural CSS path (`tag:nth-of-type(n)` chain). See `src/content/selector.ts`.
+
+## Selector drift safety: fingerprint check
+
+A binding also records a fingerprint (visible text / `aria-label`) of its
+target. At fire time, if the resolved element's fingerprint doesn't match, the
+binding is treated as stale and the action is skipped with a visible notice
+instead of firing on the wrong element.
+
+## Key model: leader-key chord, not per-binding modifiers
+
+Default leader key `` ` `` (customizable). Press leader → a short-lived
+"which key?" overlay lists bindings for the current site → next keypress
+fires the match or the chord times out / cancels on Escape. Chosen over
+Alt/Ctrl+key combos, which collide with OS/browser chrome (Alt-tap opens the
+native menu on Windows; Ctrl+key is heavily claimed by browsers), and because
+a two-key chord starting with a rare trigger key is very unlikely to collide
+with any site's own single-key shortcuts. Suppressed while focus is in an
+editable field, so it doesn't interfere with typing.
+
+## Recording
+
+Popup "Record" button arms the active tab's content script (message passing,
+since the popup closes as soon as the user clicks into the page). The next
+click is captured, walked up to the nearest interactive ancestor (button,
+link, role, form control), and turned into a selector chain + fingerprint.
+The action type is inferred: form controls → `focus`, everything else →
+`click`. The user then presses the key to bind (Escape cancels), and the
+binding is saved directly to `chrome.storage.sync`.
+
+## Storage
+
+`chrome.storage.sync`, one JSON object keyed by hostname, each holding a list
+of bindings (`{ id, key, selector, fingerprint, action, pathPrefix?, createdAt }`).
+Gives cross-device sync; known quota risk for heavy users (~8KB per item,
+~100KB total) noted in the feasibility doc.
+
+## Known v1 limitations (documented, not fixed)
+
+- **Synthetic events aren't trusted** (`isTrusted: false`) — some sites'
+  bot-detection or framework code may ignore or flag dispatched clicks. Not
+  fixed in v1 (rejected `chrome.debugger`-based real input dispatch: too
+  heavy for an always-on tool — persistent "debugging this browser" banner).
+- **Shadow DOM** — selectors can't pierce shadow boundaries (open or closed).
+  Affects specific widgets, not whole sites, for the target use case.
+- **Cross-origin iframes** — unreachable by the content script; rare for the
+  primary actions this tool targets.
