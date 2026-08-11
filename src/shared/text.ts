@@ -1,11 +1,16 @@
 /**
- * Digit runs are normalized away so text that legitimately changes as a side
- * effect of interacting with an element (unread counts, cart badges, "N
- * selected") doesn't read as materially different - used only for the
- * selector-drift staleness check in src/content/selector.ts, not display.
+ * Digit runs, and any parenthetical count wrapping one (" (814)"), are
+ * stripped entirely rather than just replaced, so a count badge that's
+ * fully absent at zero normalizes the same as one with a nonzero value -
+ * used only for the selector-drift staleness check in
+ * src/content/selector.ts, not display. See docs/design.md.
  */
 export function normalizeVolatileText(text: string): string {
-  return text.replace(/\d+/g, "#");
+  return text
+    .replace(/\(\s*\d[\d,.]*\s*\)/g, "")
+    .replace(/\s*\d[\d,.]*(?:[kKmM]\b)?\s*/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 /**

@@ -44,25 +44,38 @@ function tryQueryAll(selector: string): Element[] {
   }
 }
 
-function resolveByTier(chain: SelectorChain): Element | null {
+/** `testId`/`id` matches are trusted regardless of fingerprint drift; see docs/design.md. */
+type Tier = "testId" | "id" | "aria" | "structural";
+
+interface TierMatch {
+  element: Element;
+  tier: Tier;
+}
+
+function resolveByTier(chain: SelectorChain): TierMatch | null {
   if (chain.testId) {
     const matches = tryQueryAll(`[data-testid="${CSS.escape(chain.testId)}"]`);
-    if (matches.length === 1) return matches[0]!;
+    if (matches.length === 1) return { element: matches[0]!, tier: "testId" };
   }
   if (chain.id) {
     const el = document.getElementById(chain.id);
-    if (el) return el;
+    if (el) return { element: el, tier: "id" };
   }
   if (chain.ariaRole && chain.ariaName) {
     const candidates = tryQueryAll(`[role="${CSS.escape(chain.ariaRole)}"], ${chain.ariaRole}`);
-    const matches = candidates.filter(
-      (c) => (c.getAttribute("aria-label") ?? c.textContent ?? "").trim() === chain.ariaName,
-    );
-    if (matches.length === 1) return matches[0]!;
+    const nameOf = (c: Element) => (c.getAttribute("aria-label") ?? c.textContent ?? "").trim();
+    // Prefer an exact-text match so elements that differ only by their volatile digits
+    // (e.g. two "Upvote N" buttons) stay disambiguated; normalized matching is a fallback
+    // for when the recorded element's own volatile text has since drifted.
+    const exactMatches = candidates.filter((c) => nameOf(c) === chain.ariaName);
+    if (exactMatches.length === 1) return { element: exactMatches[0]!, tier: "aria" };
+    const expectedName = normalizeVolatileText(chain.ariaName);
+    const normalizedMatches = candidates.filter((c) => normalizeVolatileText(nameOf(c)) === expectedName);
+    if (normalizedMatches.length === 1) return { element: normalizedMatches[0]!, tier: "aria" };
   }
   if (chain.structuralPath) {
     const el = document.querySelector(chain.structuralPath);
-    if (el) return el;
+    if (el) return { element: el, tier: "structural" };
   }
   return null;
 }
@@ -74,13 +87,14 @@ export interface ResolveResult {
 }
 
 export function resolveSelector(chain: SelectorChain, expectedFingerprint: string): ResolveResult {
-  const element = resolveByTier(chain);
-  if (!element) return { element: null, stale: false };
-  const currentFingerprint = captureFingerprint(element);
+  const match = resolveByTier(chain);
+  if (!match) return { element: null, stale: false };
+  if (match.tier === "testId" || match.tier === "id") return { element: match.element, stale: false };
+  const currentFingerprint = captureFingerprint(match.element);
   const stale =
     expectedFingerprint.length > 0 &&
     normalizeVolatileText(currentFingerprint) !== normalizeVolatileText(expectedFingerprint);
-  return { element, stale };
+  return { element: match.element, stale };
 }
 
 export function performAction(element: Element, action: ActionKind): void {

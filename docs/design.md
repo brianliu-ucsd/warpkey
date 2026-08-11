@@ -32,21 +32,38 @@ disambiguation.
 Recorded at bind time, tried in order at fire time until one resolves to
 exactly one element: `data-testid` → `id` → ARIA role + accessible name →
 structural CSS path (`tag:nth-of-type(n)` chain). See `src/content/selector.ts`.
+The ARIA tier matches on exact accessible-name text first, falling back to a
+volatile-count-normalized comparison only if no exact match is unique - so
+two distinct same-role elements that differ only by a live count (e.g. two
+"Upvote N" buttons) stay disambiguated, while a single recorded element whose
+own count has since drifted still resolves.
 
 ## Selector drift safety: fingerprint check
 
 A binding also records a fingerprint (visible text / `aria-label`) of its
 target. At fire time, if the resolved element's fingerprint doesn't match, the
 binding is treated as stale and the action is skipped with a visible notice
-instead of firing on the wrong element.
+instead of firing on the wrong element - *unless* the element resolved via
+`testId` or `id` (see "Selector strategy" above), which identify an element
+independent of its text and so are trusted regardless of drift; a text change
+there reads as a relabel, not a wrong-element hit. The `aria`/`structural`
+tiers can land on a different element that merely occupies the same role or
+position, so those still go through the fingerprint comparison. (A
+similarity-threshold approach - block only "big" text changes - was rejected:
+edit distance doesn't track semantic distance, e.g. "Unsubscribe" →
+"Subscribe" is a tiny diff with inverted meaning.)
 
-Comparison normalizes away digit runs (`"clicks: 0"` vs. `"clicks: 1"` count
-as equal) so elements whose visible text legitimately changes as a side
-effect of the bound action itself - unread counts, cart badges, "N selected"
-- don't get falsely flagged as stale on the very first fire after recording.
-A real text change (e.g. a button relabeled from "Archive" to "Delete") still
-correctly trips the stale check. See `normalizeVolatileText` in
-`src/shared/text.ts`.
+Comparison normalizes away volatile counts: both a bare digit-run value
+change (`"clicks: 0"` vs. `"clicks: 1"`) and a count badge that disappears
+entirely at zero (GitHub's Issues tab renders bare `"Issues"` with no count
+markup when a repo has none, vs. `"Issues814 (814)"` when it doesn't) - the
+parenthetical fragment has to be stripped as a unit, not just its digits, or
+an empty `"( )"` shell is left behind that doesn't match the count-free case.
+This keeps elements whose text legitimately varies - unread counts, cart
+badges, a binding firing against a different record with a different count -
+from being falsely flagged as stale. A real text change still correctly trips
+the check when only a weak tier matched. See `normalizeVolatileText` in
+`src/shared/text.ts` and `resolveSelector` in `src/content/selector.ts`.
 
 ## Key model: leader-key chord, not per-binding modifiers
 
