@@ -79,13 +79,35 @@ browsers), and because a two-key chord starting with a rare trigger key is
 very unlikely to collide with any site's own single-key shortcuts. Suppressed
 while focus is in an editable field, so it doesn't interfere with typing.
 
+The leader key alone always arms the overlay, even on a site with zero
+recorded bindings - there's no early-return on an empty binding list, because
+there's always at least one thing to show (see next paragraph). Contrast this
+with a per-site binding, which only shows once at least one exists.
+
+leader+r is a permanent built-in chord, shown first in the which-key overlay
+and in the popup, separated from the site's own bindings by a divider once
+any exist (`src/content/overlay.ts`'s `separator` entry flag, set by
+`src/content/leader.ts`). It arms recording - equivalent to the popup's
+"Record new binding" button, but reachable without opening the popup first.
+`RECORD_KEY` (`src/shared/constants.ts`) is reserved: `src/content/recorder.ts`
+rejects an attempt to record a binding on it, and the chord dispatcher in
+`src/content/leader.ts` checks it before scanning user bindings, so a legacy
+binding recorded on `r` before this existed is shadowed by the built-in
+rather than firing. (A leader+leader chord to open the popup itself was tried
+and removed - `chrome.action.openPopup()` isn't reliably callable from a
+service worker relaying a keypress-triggered message, since it doesn't
+consistently carry the required user-gesture flag.)
+
 ## Recording
 
 Popup "Record" button arms the active tab's content script (message passing),
 then closes itself immediately (`window.close()`) rather than waiting for the
 user to click away - a click outside the popup dismisses it without also
 reaching the page, so leaving it open would silently swallow the user's next
-click instead of having the content script see it. The next click on the
+click instead of having the content script see it. Recording can also be
+armed directly on the page via leader+r, without opening the popup at all.
+Escape cancels at any point after arming - both while waiting for the target
+click and, as before, while waiting for the key to bind. The next click on the
 page is captured in the capture phase with `preventDefault`/`stopPropagation`
 called immediately, so the click is recorded but never actually happens -
 no navigation, form submission, or site-side click handler runs. This
@@ -99,6 +121,18 @@ binding is saved directly to `chrome.storage.sync`. The overlay then confirms
 what happened - `` Warpkey: bound "x" to "Compose button" `` - for the same
 `CONFIRMATION_DISPLAY_MS` window used elsewhere, so a successful bind is
 visible without having to open the popup to check.
+
+The key the user presses is validated before it's accepted: `RECORD_KEY`
+(reserved for the built-in leader+r chord) and any key already bound on this
+host are both rejected with a message explaining why, and the capture loop
+keeps listening rather than cancelling - the user just picks another key.
+Duplicates are checked host-wide, not against the current path, because a
+freshly recorded binding always starts unscoped (`pathPrefix` unset, fires on
+every path) until the popup's breadcrumb chips narrow it afterward - see
+"Binding target" below - so at record time there's no scope yet to compare
+against. The one collision this can't catch: two devices recording the same
+key on the same host at nearly the same moment, before `chrome.storage.sync`
+propagates between them - not addressed, see the TODO in `CLAUDE.md`.
 
 ## Storage
 

@@ -47,14 +47,15 @@ async function main(): Promise<void> {
     bindings = store[location.hostname]?.bindings ?? [];
   });
 
+  const recorder = attachRecorder({ getBindings: () => bindings });
+
   const controller = attachLeaderController({
     getBindings: () => bindings,
     onFire: fireBinding,
+    onRecord: recorder.armRecording,
     initialLeaderKey: leaderKey,
   });
   onLeaderKeyChanged((key) => controller.setLeaderKey(key));
-
-  attachRecorder();
 }
 
 main();

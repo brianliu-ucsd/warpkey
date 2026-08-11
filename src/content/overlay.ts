@@ -5,6 +5,8 @@ export interface OverlayEntry {
   label: string;
   /** True when `label` is quoted on-page text, styled distinctly from a user-given name or the bare action. */
   quoted?: boolean;
+  /** Draws a divider above this entry - used to set the built-in record row apart from the site's own bindings. */
+  separator?: boolean;
 }
 
 function getHost(): HTMLElement {
@@ -39,6 +41,7 @@ function getPanel(): HTMLElement {
         display: none;
       }
       .row { display: flex; gap: 8px; padding: 2px 0; }
+      .divider { border-top: 1px solid #3a3a3a; margin: 4px 0; }
       kbd { background: #333; border-radius: 3px; padding: 0 4px; color: #ffc846; }
       .label { color: #ccc; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       .label.quoted { font-style: italic; }
@@ -55,6 +58,11 @@ export function showBindingList(entries: OverlayEntry[]): void {
   const panel = getPanel();
   panel.innerHTML = "";
   for (const entry of entries) {
+    if (entry.separator) {
+      const divider = document.createElement("div");
+      divider.className = "divider";
+      panel.appendChild(divider);
+    }
     const row = document.createElement("div");
     row.className = "row";
     const kbd = document.createElement("kbd");

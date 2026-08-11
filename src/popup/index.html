@@ -7,6 +7,7 @@
   </head>
   <body>
     <header>
+      <span id="esc-hint" class="corner-hint">Esc to close</span>
       <h1>Warpkey</h1>
       <p id="host"></p>
       <p id="leader-row">
@@ -15,6 +16,12 @@
       </p>
     </header>
     <button id="record">Record new binding</button>
+    <ul id="global-shortcuts">
+      <li>
+        <kbd class="g-leader"></kbd><kbd>r</kbd>
+        <span class="label">Record new binding</span>
+      </li>
+    </ul>
     <ul id="bindings"></ul>
   </body>
   <script type="module" src="main.ts"></script>

@@ -1,7 +1,7 @@
 import type { Binding } from "../types/binding";
 import { showBindingList, hide } from "./overlay";
 import { resolveSelector, captureFingerprint } from "./selector";
-import { DEFAULT_LEADER_KEY } from "../shared/constants";
+import { DEFAULT_LEADER_KEY, RECORD_KEY } from "../shared/constants";
 import { resolveDisplayLabel, type DisplayLabel } from "../shared/labels";
 
 const CHORD_TIMEOUT_MS = 1500;
@@ -9,6 +9,8 @@ const CHORD_TIMEOUT_MS = 1500;
 export interface LeaderControllerOptions {
   getBindings: () => Binding[];
   onFire: (binding: Binding) => void;
+  /** Fired on the built-in leader+r chord. */
+  onRecord: () => void;
   initialLeaderKey: string;
 }
 
@@ -51,18 +53,19 @@ export function attachLeaderController(options: LeaderControllerOptions): Leader
   }
 
   function arm(): void {
-    const bindings = scopedBindings();
-    if (bindings.length === 0) return;
     armed = true;
     // Rendering (including live selector resolution) is best-effort: a failure here
     // must not leave `armed` stuck true with no timeout scheduled to clear it.
     try {
-      showBindingList(
-        bindings.map((b) => {
+      const siteBindings = scopedBindings();
+      showBindingList([
+        { key: RECORD_KEY, label: "Record new binding" },
+        ...siteBindings.map((b, i) => {
           const { text, quoted } = liveLabel(b);
-          return { key: b.key, label: text, quoted };
+          // A divider above the first site binding sets it apart from the built-in above.
+          return { key: b.key, label: text, quoted, separator: i === 0 };
         }),
-      );
+      ]);
     } catch (error) {
       console.error("Warpkey: failed to render the which-key overlay", error);
     }
@@ -75,6 +78,13 @@ export function attachLeaderController(options: LeaderControllerOptions): Leader
       event.stopPropagation();
       if (event.key === "Escape") {
         disarm();
+        return;
+      }
+      // The built-in is reserved (src/content/recorder.ts blocks recording
+      // over it) and always takes priority over any same-key user binding.
+      if (event.key.toLowerCase() === RECORD_KEY) {
+        disarm();
+        options.onRecord();
         return;
       }
       const match = scopedBindings().find((b) => b.key.toLowerCase() === event.key.toLowerCase());

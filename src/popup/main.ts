@@ -16,6 +16,7 @@ const listEl = document.querySelector<HTMLUListElement>("#bindings")!;
 const recordBtn = document.querySelector<HTMLButtonElement>("#record")!;
 const leaderKeyEl = document.querySelector<HTMLElement>("#leader-key")!;
 const leaderHintEl = document.querySelector<HTMLElement>("#leader-hint")!;
+const globalLeaderKeyEls = document.querySelectorAll<HTMLElement>(".g-leader");
 
 /** Current on-page text per binding id, fetched from the content script. Empty until a matching tab responds. */
 let liveLabels: Record<string, string> = {};
@@ -37,6 +38,7 @@ async function fetchLiveLabels(tabId: number): Promise<Record<string, string>> {
 
 function renderLeaderKey(key: string): void {
   leaderKeyEl.textContent = key;
+  for (const el of globalLeaderKeyEls) el.textContent = key;
 }
 
 function startLeaderKeyCapture(): void {
